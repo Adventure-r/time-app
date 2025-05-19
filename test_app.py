@@ -12,3 +12,4 @@ def test_time_route():
     assert data["time"] != 0, "Time should not be zero"
 
     proc.terminate()
+    print('End')
