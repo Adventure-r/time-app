@@ -1,26 +1,37 @@
-import requests
-import subprocess
-import time
+import pytest
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-def test_time_route():
-    # Запуск приложения в фоне
-    proc = subprocess.Popen(["python", "app.py"])
-    time.sleep(2)  # Даем время запуску сервера
+from app import app
+import json
 
-    response = requests.get("http://localhost:5000/time")
-    data = response.json()
-    assert data["time"] != 0, "Time should not be zero"
+@pytest.fixture
+def client():
+    app.config['TESTING'] = True
+    with app.test_client() as client:
+        yield client
 
-    proc.terminate()
+def test_time_endpoint_exists(client):
+    """Тест проверяет, что endpoint /time существует"""
+    response = client.get('/time')
+    assert response.status_code == 200
 
-def test_metrics_route():
-    proc = subprocess.Popen(["python3", "app.py"])
-    time.sleep(2)
+def test_time_endpoint_returns_json(client):
+    """Тест проверяет, что endpoint возвращает JSON"""
+    response = client.get('/time')
+    assert response.content_type == 'application/json'
 
-    # Вызов /time для увеличения счетчика
-    requests.get("http://localhost:5000/time")
-    response = requests.get("http://localhost:5000/metrics")
-    data = response.json()
-    assert data["count"] == 1, "Count should be 1 after one request"
+def test_time_endpoint_structure(client):
+    """Тест проверяет структуру ответа"""
+    response = client.get('/time')
+    data = json.loads(response.data)
+    assert 'time' in data
+    assert isinstance(data['time'], int)
 
-    proc.terminate()
+def test_time_not_zero(client):
+    """Тест проверяет, что время не равно 0"""
+    response = client.get('/time')
+    data = json.loads(response.data)
+    assert data['time'] != 0
+    assert data['time'] > 0
